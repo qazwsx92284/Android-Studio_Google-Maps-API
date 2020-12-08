@@ -20,6 +20,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
@@ -28,6 +29,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private GoogleMap mMap;
 
     private static final LatLng AIRPORT = new LatLng(32.24312, 128.12355);
+    private static final LatLng MALL = new LatLng(37.182381,120.13243);
 
 
     @Override
@@ -93,9 +95,40 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         mMap.addMarker((new MarkerOptions().position(AIRPORT).title("Hotel")
         .icon(bitmapDescriptorFromVector(this,R.drawable.ic_baseline_airplanemode_active_24))));
+
+        mMap.addMarker(new MarkerOptions()
+        .icon(bitmapDescriptorFromVector(this, R.drawable.ic_baseline_local_mall_24))
+        .anchor(0.0f,1.0f)
+        .title("Mall")
+        .position(MALL));
+
+        //zoom in specific position
+        CameraPosition cameraPosition = new CameraPosition.Builder()
+                .target(MALL) //target is where we want to zoom into
+                .zoom(15) // the higher value the  closer zoom
+                .bearing(0) //north
+                .tilt(30) //degree
+                .build(); //start building it
+        mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
     }
+
+
+
+    private BitmapDescriptor bitmapDescriptor(Context context, @DrawableRes int vectorDrawableResourceId) {
+        Drawable background = ContextCompat.getDrawable(context, vectorDrawableResourceId);
+        background.setBounds(0, 0, background.getIntrinsicWidth(), background.getIntrinsicHeight());
+        Drawable vectorDrawable = ContextCompat.getDrawable(context, vectorDrawableResourceId);
+        vectorDrawable.setBounds(40, 20, vectorDrawable.getIntrinsicWidth() + 40, vectorDrawable.getIntrinsicHeight() + 20);
+        Bitmap bitmap = Bitmap.createBitmap(background.getIntrinsicWidth(), background.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        background.draw(canvas);
+        vectorDrawable.draw(canvas);
+        return BitmapDescriptorFactory.fromBitmap(bitmap);
+    }
+
+
     private BitmapDescriptor bitmapDescriptorFromVector(Context context, @DrawableRes int vectorDrawableResourceId) {
-        Drawable background = ContextCompat.getDrawable(context, R.drawable.ic_baseline_airplanemode_active_24);
+        Drawable background = ContextCompat.getDrawable(context, vectorDrawableResourceId);
         background.setBounds(0, 0, background.getIntrinsicWidth(), background.getIntrinsicHeight());
         Drawable vectorDrawable = ContextCompat.getDrawable(context, vectorDrawableResourceId);
         vectorDrawable.setBounds(40, 20, vectorDrawable.getIntrinsicWidth() + 40, vectorDrawable.getIntrinsicHeight() + 20);
