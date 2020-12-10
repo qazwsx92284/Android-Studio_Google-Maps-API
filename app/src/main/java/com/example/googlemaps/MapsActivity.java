@@ -1,19 +1,30 @@
 package com.example.googlemaps;
 
+import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Camera;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
+import android.location.Criteria;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.widget.ImageButton;
 
 import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.backendless.geo.GeoPoint;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -24,17 +35,18 @@ import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
-public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback {
+import java.util.List;
+
+public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, LocationListener {
 
     private GoogleMap mMap;
-
-    private static final LatLng AIRPORT = new LatLng(32.24312, 128.12355);
-
-    private static final LatLng HOTEL = new LatLng(30.123421, 120.431923);
-
-    private static final LatLng MALL = new LatLng(37.182381,120.13243);
-
-
+    private LocationManager locationManager;
+    private String provider;
+    double lat = -29.119, lng = 26.3342; //set latitude and longitude
+    ImageButton imBtn;
+    boolean isExistingPosition = false;
+    GeoPoint existingPoint;
+    List<GeoPoint> list;
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -68,6 +80,33 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        if(ContextCompat.checkSelfPermission(getApplicationContext(),Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_DENIED ||
+                (ContextCompat.checkSelfPermission(getApplicationContext(),Manifest.permission.ACCESS_FINE_LOCATION ) == PackageManager.PERMISSION_DENIED)) {
+            ActivityCompat.requestPermissions(MapsActivity.this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION}, 0);
+        }
+        else {
+            locationManager.removeUpdates(this);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if(ContextCompat.checkSelfPermission(getApplicationContext(),Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_DENIED ||
+        (ContextCompat.checkSelfPermission(getApplicationContext(),Manifest.permission.ACCESS_FINE_LOCATION ) == PackageManager.PERMISSION_DENIED)) {
+            ActivityCompat.requestPermissions(MapsActivity.this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION}, 0);
+        }
+        else {
+            locationManager.requestLocationUpdates(provider,18000,50,this);
+        }
+
+
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,6 +116,23 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
+
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        Criteria criteria = new Criteria();
+        provider = locationManager.getBestProvider(criteria, false);
+
+        if(ContextCompat.checkSelfPermission(getApplicationContext(),
+                Manifest.permission.ACCESS_COARSE_LOCATION) !=
+                PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(getApplicationContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION) !=
+                PackageManager.PERMISSION_GRANTED ) {
+            ActivityCompat.requestPermissions(MapsActivity.this, new String[]
+                    {Manifest.permission.ACCESS_COARSE_LOCATION,
+                            Manifest.permission.ACCESS_FINE_LOCATION},0);
+        } else{
+            Location location = locationManager.getLastKnownLocation(provider);
+        }
     }
 
     /**
@@ -93,27 +149,45 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         mMap = googleMap;
 
         // Add a marker in Sydney and move the camera
-        LatLng sydney = new LatLng(-34, 151);
-        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+        LatLng position = new LatLng(lat,lng);
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(position, 10));
+        mMap.animateCamera(CameraUpdateFactory .zoomTo(10), 2000, null);
+        mMap.addMarker(new MarkerOptions().icon(bitmapDescriptor(this,R.drawable.ic_baseline_airplanemode_active_24))
+                .position(position).title("Marker in Sydney"));
 
-        mMap.addMarker((new MarkerOptions().position(AIRPORT).title("Hotel")
+        if(ContextCompat.checkSelfPermission(getApplicationContext(),
+                Manifest.permission.ACCESS_COARSE_LOCATION) !=
+                PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(getApplicationContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION) !=
+                PackageManager.PERMISSION_GRANTED ) {
+            ActivityCompat.requestPermissions(MapsActivity.this, new String[]
+                    {Manifest.permission.ACCESS_COARSE_LOCATION,
+                            Manifest.permission.ACCESS_FINE_LOCATION},0);
+        }
+        else {
+            mMap.setMyLocationEnabled(true);
+        }
 
-        .icon(bitmapDescriptor(this,R.drawable.ic_baseline_airplanemode_active_24))));
+        mMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
 
-        mMap.addMarker(new MarkerOptions().position(HOTEL).anchor(0.0f,0.01f).title("Hotel")
-                .icon(bitmapDescriptor(this,R.drawable.ic_baseline_local_hotel_24)));
+       // mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
 
-        CameraPosition cameraPosition = new CameraPosition.Builder()
-                .target(HOTEL).tilt(30).zoom(15).bearing(0).build();
 
-        mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+
+//        mMap.addMarker((new MarkerOptions().position(AIRPORT).title("Hotel")
+//
+//        .icon(bitmapDescriptor(this,R.drawable.ic_baseline_airplanemode_active_24))));
+//
+//        mMap.addMarker(new MarkerOptions().position(HOTEL).anchor(0.0f,0.01f).title("Hotel")
+//                .icon(bitmapDescriptor(this,R.drawable.ic_baseline_local_hotel_24)));
+//
+//        CameraPosition cameraPosition = new CameraPosition.Builder()
+//                .target(HOTEL).tilt(30).zoom(15).bearing(0).build();
+//
+//        mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
 
 
     }
-
-
-
 
 
 
@@ -142,4 +216,39 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         return BitmapDescriptorFactory.fromBitmap(bitmap);
     }
 
+    @Override
+    public void onLocationChanged(@NonNull Location location) {
+        lat = location.getLatitude();
+        lng = location.getLongitude();
+
+        if(mMap !=null) {
+            LatLng position = new LatLng(lat, lng);
+            mMap.addMarker(new MarkerOptions().icon(bitmapDescriptor(this,R.drawable.ic_baseline_airplanemode_active_24))
+            .anchor(0.0f,1.0f).title("Your last known position").position(position));
+
+            mMap.moveCamera(CameraUpdateFactory.newLatLng(position));
+        }
+
+
+    }
+
+    @Override
+    public void onStatusChanged(String provider, int status, Bundle extras) {
+
+    }
+
+    @Override
+    public void onProviderEnabled(@NonNull String provider) {
+
+    }
+
+    @Override
+    public void onProviderDisabled(@NonNull String provider) {
+
+    }
+
+    @Override
+    public void onPointerCaptureChanged(boolean hasCapture) {
+
+    }
 }

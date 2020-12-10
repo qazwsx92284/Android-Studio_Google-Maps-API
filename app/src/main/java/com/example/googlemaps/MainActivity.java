@@ -146,7 +146,7 @@ public class MainActivity extends AppCompatActivity {
                 }
                 else {
                     Intent intent = new Intent(MainActivity.this, MapsActivity.class);
-                    intent.putExtra("type", "family");
+                    intent.putExtra("type", "nelson");
                     startActivity(intent);
                 }
 
